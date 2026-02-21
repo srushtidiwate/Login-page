@@ -1,0 +1,121 @@
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# ---------------- LOGIN SYSTEM ---------------- #
+
+# Login state
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+
+# Login function
+def login(username, password):
+    if username == "admin" and password == "1234":
+        st.session_state.logged_in = True
+    else:
+        st.error("Invalid Username or Password")
+
+# If not logged in → Show Login Page
+if not st.session_state.logged_in:
+    st.title("Login Page")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        login(username, password)
+
+    st.stop()   # Stop app until login
+
+
+# ---------------- EXPENSE TRACKER ---------------- #
+
+# Initialize session state for expenses
+if 'expenses' not in st.session_state:
+    st.session_state.expenses = pd.DataFrame(
+        columns=['Date', 'Category', 'Amount', 'Description']
+    )
+
+# Add Expense
+def add_expense(date, category, amount, description):
+    new_expense = pd.DataFrame(
+        [[date, category, amount, description]],
+        columns=st.session_state.expenses.columns
+    )
+    st.session_state.expenses = pd.concat(
+        [st.session_state.expenses, new_expense],
+        ignore_index=True
+    )
+
+# Save Expenses
+def save_expenses():
+    csv = st.session_state.expenses.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="Download CSV",
+        data=csv,
+        file_name="expenses.csv",
+        mime="text/csv"
+    )
+
+# Visualization
+def visualize_expenses():
+    if not st.session_state.expenses.empty:
+
+        st.session_state.expenses['Amount'] = pd.to_numeric(
+            st.session_state.expenses['Amount'], errors='coerce'
+        )
+
+        data = st.session_state.expenses.groupby('Category')['Amount'].sum().reset_index()
+
+        fig, ax = plt.subplots()
+        sns.barplot(data=data, x='Category', y='Amount', ax=ax)
+
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+
+    else:
+        st.warning("No Expenses to Visualize!")
+
+
+# ---------------- MAIN UI ---------------- #
+
+st.title("Expense Tracker")
+
+# Sidebar
+with st.sidebar:
+
+    if st.button("Logout"):
+        st.session_state.logged_in = False
+        st.experimental_rerun()
+
+    st.header('Add Expense')
+
+    date = st.date_input("Date")
+    category = st.selectbox(
+        'Category',
+        ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other']
+    )
+    amount = st.number_input('Amount', min_value=0.0, format="%.2f")
+    description = st.text_input('Description')
+
+    if st.button('Add'):
+        add_expense(date, category, amount, description)
+        st.success("Expense Added!")
+
+    st.header('File Operations')
+
+    uploaded_file = st.file_uploader("Load CSV", type=['csv'])
+    if uploaded_file is not None:
+        st.session_state.expenses = pd.read_csv(uploaded_file)
+
+    save_expenses()
+
+
+st.header('Expenses')
+st.write(st.session_state.expenses)
+
+st.header('Visualization')
+
+if st.button('Visualize Expenses'):
+    visualize_expenses()
