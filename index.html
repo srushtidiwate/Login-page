@@ -9,7 +9,7 @@ import seaborn as sns
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
-# Login function
+# Login functions
 def login(username, password):
     if username == "admin" and password == "1234":
         st.session_state.logged_in = True
